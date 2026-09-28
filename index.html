@@ -2,32 +2,470 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Eksperimen N-Back</title>
+    <title>Eksperimen 2-Back</title>
 
     <script src="https://unpkg.com/jspsych@8.2.1"></script>
     <link href="https://unpkg.com/jspsych@8.2.1/css/jspsych.css" rel="stylesheet">
 
     <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@2.1.0"></script>
 </head>
 
-<body>
-</body>
+<body></body>
 
 <script>
 
-const jsPsych = initJsPsych();
+/* =====================================================
+   1. INISIALISASI jsPSYCH
+   ===================================================== */
+
+const jsPsych = initJsPsych({
+    on_finish: function() {
+        jsPsych.data.get().localSave("csv", "hasil_nback.csv");
+    }
+});
 
 const timeline = [];
 
+
+/* =====================================================
+   2. KODE PESERTA
+   ===================================================== */
+
+timeline.push({
+    type: jsPsychSurveyHtmlForm,
+
+    preamble: `
+        <h2>Eksperimen Working Memory</h2>
+        <p>Silakan masukkan kode peserta Anda.</p>
+        <p>Contoh: P01</p>
+    `,
+
+    html: `
+        <p>
+            <input 
+                name="kode_peserta"
+                type="text"
+                required
+                placeholder="P01"
+            >
+        </p>
+    `,
+
+    button_label: "Mulai"
+});
+
+
+/* =====================================================
+   3. INSTRUKSI UMUM
+   ===================================================== */
+
 timeline.push({
     type: jsPsychHtmlKeyboardResponse,
+
     stimulus: `
-        <h2>Selamat Datang</h2>
-        <p>Ini adalah eksperimen N-Back.</p>
-        <p>Tekan tombol <b>SPASI</b> untuk melanjutkan.</p>
+        <h2>Petunjuk Eksperimen</h2>
+
+        <p>
+        Dalam eksperimen ini, Anda akan melihat huruf
+        satu per satu.
+        </p>
+
+        <p>
+        Tugas Anda adalah mengingat huruf yang muncul
+        <b>2 langkah sebelumnya</b>.
+        </p>
+
+        <p>
+        Jika huruf yang sedang muncul sama dengan huruf
+        2 langkah sebelumnya, tekan:
+        </p>
+
+        <h2>SPASI</h2>
+
+        <p>
+        Jika tidak sama, jangan tekan apa pun.
+        </p>
+
+        <p>
+        Kerjakan secepat dan seakurat mungkin.
+        </p>
+
+        <p>
+        Tekan <b>SPASI</b> untuk melanjutkan.
+        </p>
     `,
+
     choices: [" "]
 });
+
+
+/* =====================================================
+   4. FUNGSI MEMBUAT SEQUENCE 2-BACK
+   ===================================================== */
+
+function createNBackSequence(numberOfTrials) {
+
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+    let sequence = [];
+
+    for (let i = 0; i < numberOfTrials; i++) {
+
+        /* Dua trial pertama tidak bisa menjadi target */
+
+        if (i < 2) {
+
+            const randomLetter =
+                letters[Math.floor(Math.random() * letters.length)];
+
+            sequence.push(randomLetter);
+
+        } else {
+
+            /*
+            Sekitar 30% trial dibuat sebagai target.
+            Target = sama dengan huruf 2 langkah sebelumnya.
+            */
+
+            const isTarget = Math.random() < 0.30;
+
+            if (isTarget) {
+
+                sequence.push(sequence[i - 2]);
+
+            } else {
+
+                /*
+                Jika bukan target, pilih huruf
+                yang berbeda dari 2-back.
+                */
+
+                let randomLetter;
+
+                do {
+
+                    randomLetter =
+                        letters[Math.floor(Math.random() * letters.length)];
+
+                } while (randomLetter === sequence[i - 2]);
+
+                sequence.push(randomLetter);
+            }
+        }
+    }
+
+    return sequence;
+}
+
+
+/* =====================================================
+   5. FUNGSI MEMBUAT KONDISI N-BACK
+   ===================================================== */
+
+function createNBackCondition(conditionName, timedCondition) {
+
+    const sequence = createNBackSequence(60);
+
+    const conditionTimeline = [];
+
+    /* ---------- INSTRUKSI KONDISI ---------- */
+
+    if (timedCondition) {
+
+        conditionTimeline.push({
+
+            type: jsPsychHtmlKeyboardResponse,
+
+            stimulus: `
+                <h2>Kondisi Tekanan Waktu</h2>
+
+                <p>
+                Sekarang Anda akan mengerjakan tugas 2-back
+                dengan batas waktu.
+                </p>
+
+                <p>
+                Tekan <b>SPASI</b> jika huruf sama dengan
+                huruf 2 langkah sebelumnya.
+                </p>
+
+                <p>
+                Anda harus merespons dalam waktu yang tersedia.
+                </p>
+
+                <p>
+                Kerjakan secepat dan seakurat mungkin.
+                </p>
+
+                <p>
+                Tekan <b>SPASI</b> untuk mulai.
+                </p>
+            `,
+
+            choices: [" "]
+        });
+
+    } else {
+
+        conditionTimeline.push({
+
+            type: jsPsychHtmlKeyboardResponse,
+
+            stimulus: `
+                <h2>Kondisi Tanpa Tekanan Waktu</h2>
+
+                <p>
+                Sekarang Anda akan mengerjakan tugas 2-back.
+                </p>
+
+                <p>
+                Tidak ada countdown yang ditampilkan.
+                </p>
+
+                <p>
+                Tekan <b>SPASI</b> jika huruf sama dengan
+                huruf 2 langkah sebelumnya.
+                </p>
+
+                <p>
+                Kerjakan seakurat mungkin.
+                </p>
+
+                <p>
+                Tekan <b>SPASI</b> untuk mulai.
+                </p>
+            `,
+
+            choices: [" "]
+        });
+    }
+
+
+    /* ---------- TRIAL N-BACK ---------- */
+
+    sequence.forEach((letter, index) => {
+
+        const isTarget =
+            index >= 2 &&
+            letter === sequence[index - 2];
+
+        conditionTimeline.push({
+
+            type: jsPsychHtmlKeyboardResponse,
+
+            stimulus: `
+                <div style="font-size:80px;">
+                    ${letter}
+                </div>
+            `,
+
+            choices: [" "],
+
+            /*
+            Huruf ditampilkan selama 500 ms.
+            */
+
+            stimulus_duration: 500,
+
+            /*
+            Kondisi timer:
+            peserta memiliki 2000 ms untuk merespons.
+
+            Kondisi tanpa timer:
+            peserta memiliki 5000 ms.
+            */
+
+            trial_duration: timedCondition ? 2000 : 5000,
+
+            data: {
+
+                condition: conditionName,
+
+                timed: timedCondition,
+
+                trial_number: index + 1,
+
+                stimulus: letter,
+
+                target: isTarget
+            }
+        });
+
+    });
+
+    return conditionTimeline;
+}
+
+
+/* =====================================================
+   6. LATIHAN
+   ===================================================== */
+
+timeline.push({
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+        <h2>Latihan</h2>
+
+        <p>
+        Sebelum eksperimen dimulai, Anda akan melakukan
+        beberapa percobaan latihan.
+        </p>
+
+        <p>
+        Ingat:
+        </p>
+
+        <h3>
+        SPASI jika huruf sama dengan 2 langkah sebelumnya.
+        </h3>
+
+        <p>
+        Tekan <b>SPASI</b> untuk memulai latihan.
+        </p>
+    `,
+
+    choices: [" "]
+});
+
+
+const practiceSequence = createNBackSequence(10);
+
+practiceSequence.forEach((letter, index) => {
+
+    const isTarget =
+        index >= 2 &&
+        letter === practiceSequence[index - 2];
+
+    timeline.push({
+
+        type: jsPsychHtmlKeyboardResponse,
+
+        stimulus: `
+            <div style="font-size:80px;">
+                ${letter}
+            </div>
+        `,
+
+        choices: [" "],
+
+        stimulus_duration: 500,
+
+        trial_duration: 3000,
+
+        data: {
+
+            phase: "practice",
+
+            stimulus: letter,
+
+            target: isTarget
+        }
+    });
+});
+
+
+/* =====================================================
+   7. JEDA SEBELUM EKSPERIMEN
+   ===================================================== */
+
+timeline.push({
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+        <h2>Latihan selesai</h2>
+
+        <p>
+        Selanjutnya eksperimen utama akan dimulai.
+        </p>
+
+        <p>
+        Anda akan mengerjakan dua kondisi.
+        </p>
+
+        <p>
+        Tekan <b>SPASI</b> untuk melanjutkan.
+        </p>
+    `,
+
+    choices: [" "]
+});
+
+
+/* =====================================================
+   8. ACAK URUTAN KONDISI
+   ===================================================== */
+
+const conditions = jsPsych.randomization.shuffle([
+
+    {
+        name: "tanpa_tekanan_waktu",
+        timed: false
+    },
+
+    {
+        name: "tekanan_waktu",
+        timed: true
+    }
+
+]);
+
+
+/* =====================================================
+   9. MASUKKAN DUA KONDISI
+   ===================================================== */
+
+conditions.forEach(condition => {
+
+    const conditionTrials =
+        createNBackCondition(
+            condition.name,
+            condition.timed
+        );
+
+    conditionTrials.forEach(trial => {
+
+        timeline.push(trial);
+
+    });
+
+});
+
+
+/* =====================================================
+   10. PESAN SELESAI
+   ===================================================== */
+
+timeline.push({
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+        <h2>Eksperimen selesai</h2>
+
+        <p>
+        Terima kasih telah mengikuti eksperimen.
+        </p>
+
+        <p>
+        Data Anda telah disimpan.
+        </p>
+
+        <p>
+        Anda dapat menutup halaman ini.
+        </p>
+    `,
+
+    choices: "NO_KEYS"
+});
+
+
+/* =====================================================
+   11. JALANKAN EKSPERIMEN
+   ===================================================== */
 
 jsPsych.run(timeline);
 
