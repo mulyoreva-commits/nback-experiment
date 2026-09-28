@@ -1,719 +1,1099 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta charset="UTF-8">
+  <title>Eksperimen N-Back</title>
 
-    <title>Eksperimen 2-Back</title>
+  <!-- jsPsych -->
+  <script src="https://unpkg.com/jspsych@8.2.1"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
 
-    <script src="https://unpkg.com/jspsych@8.2.1"></script>
+  <link
+    href="https://unpkg.com/jspsych@8.2.1/css/jspsych.css"
+    rel="stylesheet"
+  >
 
-    <link
-        href="https://unpkg.com/jspsych@8.2.1/css/jspsych.css"
-        rel="stylesheet"
-    >
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
 
-    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    .jspsych-content {
+      max-width: 900px;
+    }
 
+    .instruction-box {
+      background: white;
+      padding: 35px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.10);
+      line-height: 1.7;
+    }
+
+    .instruction-box h1,
+    .instruction-box h2 {
+      margin-top: 0;
+    }
+
+    .letter {
+      font-size: 110px;
+      font-weight: bold;
+      margin: 30px 0;
+    }
+
+    .response-info {
+      font-size: 22px;
+      margin-top: 20px;
+    }
+
+    .timer-container {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto 20px auto;
+    }
+
+    .timer-text {
+      font-size: 25px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .timer-bar {
+      width: 100%;
+      height: 22px;
+      background: #ddd;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .timer-fill {
+      height: 100%;
+      width: 100%;
+      background: #333;
+    }
+
+    .feedback {
+      font-size: 55px;
+      font-weight: bold;
+      margin: 40px 0 25px 0;
+    }
+
+    .feedback-correct {
+      color: green;
+    }
+
+    .feedback-wrong {
+      color: red;
+    }
+
+    .feedback-timeout {
+      color: darkorange;
+    }
+
+    .space-info {
+      font-size: 22px;
+      margin-top: 30px;
+    }
+
+    .save-box {
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.10);
+      text-align: center;
+    }
+
+    .save-button {
+      font-size: 28px;
+      font-weight: bold;
+      padding: 18px 45px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: #222;
+      color: white;
+      margin-top: 20px;
+    }
+
+    .save-button:hover {
+      background: #444;
+    }
+
+    .saved-message {
+      font-size: 24px;
+      color: green;
+      font-weight: bold;
+      margin-top: 25px;
+    }
+
+    .small-note {
+      color: #666;
+      font-size: 16px;
+    }
+  </style>
 </head>
 
-<body></body>
+<body>
 
 <script>
 
-/* =====================================================
-   PENGATURAN DASAR
-   ===================================================== */
+  // ============================================================
+  // 1. INISIALISASI jsPsych
+  // ============================================================
 
-const jsPsych = initJsPsych({
-
+  const jsPsych = initJsPsych({
     on_finish: function() {
+      console.log("Eksperimen selesai.");
+    }
+  });
 
-        jsPsych.data
-            .get()
-            .localSave(
-                "csv",
-                "hasil_nback.csv"
-            );
 
+  // ============================================================
+  // 2. VARIABEL EKSPERIMEN
+  // ============================================================
+
+  const TOTAL_STIMULI = 22;
+
+  // Waktu Ronde 1
+  // Untuk sementara kita gunakan 2 detik.
+  const TIME_LIMIT = 2000;
+
+  let participantID = "";
+
+
+  // ============================================================
+  // 3. MEMBUAT STIMULUS N-BACK
+  // ============================================================
+
+  function generateNBackStimuli(total) {
+
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+    let sequence = [];
+
+    // Dua huruf pertama tidak memiliki 2-back.
+    // Keduanya hanya untuk memulai sequence.
+    sequence.push(
+      letters[Math.floor(Math.random() * letters.length)]
+    );
+
+    sequence.push(
+      letters[Math.floor(Math.random() * letters.length)]
+    );
+
+    // Kita buat 20 posisi berikutnya.
+    // Sekitar 40% merupakan target.
+    for (let i = 2; i < total; i++) {
+
+      const shouldBeTarget = Math.random() < 0.4;
+
+      if (shouldBeTarget) {
+
+        // Sama dengan 2 posisi sebelumnya
+        sequence.push(sequence[i - 2]);
+
+      } else {
+
+        // Cari huruf yang berbeda dengan 2-back
+        let newLetter;
+
+        do {
+          newLetter =
+            letters[Math.floor(Math.random() * letters.length)];
+        } while (newLetter === sequence[i - 2]);
+
+        sequence.push(newLetter);
+      }
     }
 
-});
+    return sequence;
+  }
 
 
-const timeline = [];
+  // ============================================================
+  // 4. MEMBUAT 2 RONDE
+  // ============================================================
+
+  const round1Stimuli = generateNBackStimuli(TOTAL_STIMULI);
+  const round2Stimuli = generateNBackStimuli(TOTAL_STIMULI);
 
 
-/* =====================================================
-   VARIABEL PESERTA
-   ===================================================== */
+  // ============================================================
+  // 5. DATA PESERTA
+  // ============================================================
 
-let participantID = "";
-
-
-/* =====================================================
-   INPUT KODE PESERTA
-   ===================================================== */
-
-timeline.push({
+  const participantScreen = {
 
     type: jsPsychHtmlKeyboardResponse,
 
     stimulus: `
+      <div class="instruction-box">
 
-        <h2>Eksperimen Working Memory</h2>
+        <h1>Eksperimen N-Back</h1>
 
         <p>
-        Masukkan kode peserta.
+          Sebelum memulai, silakan masukkan ID peserta.
         </p>
 
         <input
-            id="participant"
-            type="text"
-            placeholder="Contoh: P01"
-            style="
-                font-size:20px;
-                padding:10px;
-            "
+          type="text"
+          id="participant-id"
+          style="
+            font-size:24px;
+            padding:12px;
+            width:80%;
+            max-width:400px;
+          "
+          placeholder="Contoh: P01"
         >
 
         <br><br>
 
         <button
-            id="startButton"
-            style="
-                font-size:20px;
-                padding:10px 25px;
-            "
+          id="start-button"
+          style="
+            font-size:22px;
+            padding:12px 30px;
+            cursor:pointer;
+          "
         >
-            Mulai
+          MULAI
         </button>
 
+      </div>
     `,
 
     choices: "NO_KEYS",
 
     on_load: function() {
 
-        document
-            .getElementById("startButton")
-            .addEventListener("click", function() {
+      document
+        .getElementById("start-button")
+        .addEventListener("click", function() {
 
-                participantID =
-                    document
-                    .getElementById("participant")
-                    .value;
+          const input =
+            document.getElementById("participant-id");
 
-                if (
-                    participantID.trim() === ""
-                ) {
+          if (input.value.trim() === "") {
 
-                    alert(
-                        "Silakan masukkan kode peserta."
-                    );
+            alert("Silakan masukkan ID peserta terlebih dahulu.");
 
-                    return;
-                }
+            return;
+          }
 
-                jsPsych.finishTrial();
+          participantID = input.value.trim();
 
-            });
+          // Menambahkan ID ke semua data setelah ini
+          jsPsych.data.addProperties({
+            participant: participantID
+          });
 
+          jsPsych.finishTrial();
+        });
+    }
+  };
+
+
+  // ============================================================
+  // 6. INSTRUKSI UMUM
+  // ============================================================
+
+  const generalInstruction = {
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+      <div class="instruction-box">
+
+        <h1>Petunjuk Umum</h1>
+
+        <p>
+          Pada tugas ini Anda akan melihat serangkaian huruf.
+        </p>
+
+        <p>
+          Tugas Anda adalah mengingat huruf yang muncul
+          <strong>2 langkah sebelumnya</strong>.
+        </p>
+
+        <p>
+          Jika huruf saat ini <strong>sama</strong> dengan huruf
+          2 langkah sebelumnya:
+        </p>
+
+        <h2>Tekan F</h2>
+
+        <p>
+          Jika huruf saat ini <strong>tidak sama</strong> dengan
+          huruf 2 langkah sebelumnya:
+        </p>
+
+        <h2>Tekan J</h2>
+
+        <hr>
+
+        <p>
+          Jawablah sesuai dengan aturan tersebut.
+        </p>
+
+        <p>
+          Pada dua huruf pertama belum ada huruf 2 langkah
+          sebelumnya, sehingga Anda tidak perlu menjawab.
+        </p>
+
+        <p>
+          Pastikan Anda memahami aturan sebelum melanjutkan.
+        </p>
+
+        <p>
+          <strong>Tekan SPASI untuk melanjutkan.</strong>
+        </p>
+
+      </div>
+    `,
+
+    choices: [" "]
+  };
+
+
+  // ============================================================
+  // 7. INSTRUKSI RONDE 1
+  // ============================================================
+
+  const round1Instruction = {
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+      <div class="instruction-box">
+
+        <h1>RONDE 1</h1>
+
+        <h2>Dengan Batas Waktu</h2>
+
+        <p>
+          Pada ronde ini setiap huruf memiliki
+          <strong>batas waktu</strong>.
+        </p>
+
+        <p>
+          Timer akan terlihat di layar.
+        </p>
+
+        <p>
+          Anda harus memberikan jawaban sebelum waktu habis.
+        </p>
+
+        <hr>
+
+        <p>
+          Jika sama dengan huruf 2 langkah sebelumnya:
+        </p>
+
+        <h2>F = SAMA</h2>
+
+        <p>
+          Jika tidak sama:
+        </p>
+
+        <h2>J = TIDAK SAMA</h2>
+
+        <p>
+          Jika Anda tidak menjawab sampai waktu habis,
+          sistem akan menampilkan:
+        </p>
+
+        <h2>WAKTU HABIS</h2>
+
+        <hr>
+
+        <p>
+          <strong>
+            Setelah memberikan jawaban, sistem akan otomatis
+            melanjutkan ke huruf berikutnya.
+          </strong>
+        </p>
+
+        <p>
+          <strong>Tekan SPASI untuk memulai Ronde 1.</strong>
+        </p>
+
+      </div>
+    `,
+
+    choices: [" "]
+  };
+
+
+  // ============================================================
+  // 8. INSTRUKSI RONDE 2
+  // ============================================================
+
+  const round2Instruction = {
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+      <div class="instruction-box">
+
+        <h1>RONDE 2</h1>
+
+        <h2>Tanpa Batas Waktu</h2>
+
+        <p>
+          Sekarang Anda akan mengerjakan tugas yang sama,
+          tetapi <strong>tidak ada timer</strong>.
+        </p>
+
+        <p>
+          Anda dapat mengambil waktu sesuai kebutuhan sebelum
+          memberikan jawaban.
+        </p>
+
+        <hr>
+
+        <p>
+          Jika huruf saat ini sama dengan huruf
+          2 langkah sebelumnya:
+        </p>
+
+        <h2>F = SAMA</h2>
+
+        <p>
+          Jika huruf saat ini tidak sama:
+        </p>
+
+        <h2>J = TIDAK SAMA</h2>
+
+        <hr>
+
+        <p>
+          Setelah Anda menjawab, akan muncul informasi
+          <strong>BENAR</strong> atau <strong>SALAH</strong>.
+        </p>
+
+        <p>
+          Setelah melihat feedback tersebut,
+          <strong>tekan SPASI</strong> untuk melanjutkan
+          ke huruf berikutnya.
+        </p>
+
+        <p>
+          <strong>Tekan SPASI untuk memulai Ronde 2.</strong>
+        </p>
+
+      </div>
+    `,
+
+    choices: [" "]
+  };
+
+
+  // ============================================================
+  // 9. FUNGSI MEMBUAT TRIAL RONDE 1
+  // ============================================================
+
+  function createRound1Trial(letter, trialNumber, stimuli) {
+
+    let timerInterval = null;
+
+    return {
+
+      type: jsPsychHtmlKeyboardResponse,
+
+      stimulus: function() {
+
+        return `
+          <div>
+
+            <div class="timer-container">
+
+              <div class="timer-text">
+                Waktu:
+                <span id="timer-number">2.00</span>
+                detik
+              </div>
+
+              <div class="timer-bar">
+                <div
+                  id="timer-fill"
+                  class="timer-fill"
+                ></div>
+              </div>
+
+            </div>
+
+            <div class="letter">
+              ${letter}
+            </div>
+
+            <div class="response-info">
+              <strong>F</strong> = SAMA
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              <strong>J</strong> = TIDAK SAMA
+            </div>
+
+          </div>
+        `;
+      },
+
+      choices: ["f", "j"],
+
+      trial_duration: TIME_LIMIT,
+
+      response_ends_trial: true,
+
+      data: {
+        phase: "test",
+        round: 1,
+        condition: "timer",
+        trial_in_round: trialNumber,
+        stimulus: letter,
+        deadline: TIME_LIMIT
+      },
+
+      on_load: function() {
+
+        const startTime = performance.now();
+
+        timerInterval = setInterval(function() {
+
+          const elapsed = performance.now() - startTime;
+
+          const remaining =
+            Math.max(0, TIME_LIMIT - elapsed);
+
+          const seconds =
+            (remaining / 1000).toFixed(2);
+
+          const numberElement =
+            document.getElementById("timer-number");
+
+          const fillElement =
+            document.getElementById("timer-fill");
+
+          if (numberElement) {
+            numberElement.textContent = seconds;
+          }
+
+          if (fillElement) {
+
+            const percentage =
+              (remaining / TIME_LIMIT) * 100;
+
+            fillElement.style.width =
+              percentage + "%";
+          }
+
+        }, 20);
+      },
+
+      on_finish: function(data) {
+
+        if (timerInterval !== null) {
+          clearInterval(timerInterval);
+        }
+
+        // Dua trial pertama tidak perlu dijawab.
+        if (trialNumber <= 2) {
+
+          data.correct = null;
+          data.accuracy = null;
+          data.timeout = false;
+
+          return;
+        }
+
+        const previousLetter =
+          stimuli[trialNumber - 3];
+
+        const currentLetter =
+          letter;
+
+        const isTarget =
+          currentLetter === previousLetter;
+
+        data.target = isTarget;
+
+        let correct = false;
+
+        if (data.response === null) {
+
+          data.timeout = true;
+          correct = false;
+
+        } else {
+
+          data.timeout = false;
+
+          if (isTarget && data.response === "f") {
+            correct = true;
+          }
+
+          if (!isTarget && data.response === "j") {
+            correct = true;
+          }
+        }
+
+        data.correct = correct;
+        data.accuracy = correct ? 1 : 0;
+      }
+    };
+  }
+
+
+  // ============================================================
+  // 10. FEEDBACK RONDE 1
+  // ============================================================
+
+  const round1Feedback = {
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: function() {
+
+      const lastData =
+        jsPsych.data.get().last(1).values()[0];
+
+      if (lastData.trial_in_round <= 2) {
+
+        return `
+          <div class="feedback">
+            MULAI
+          </div>
+        `;
+      }
+
+      if (lastData.timeout) {
+
+        return `
+          <div class="feedback feedback-timeout">
+            ⏰ WAKTU HABIS
+          </div>
+        `;
+      }
+
+      if (lastData.correct) {
+
+        return `
+          <div class="feedback feedback-correct">
+            ✓ BENAR
+          </div>
+        `;
+      }
+
+      return `
+        <div class="feedback feedback-wrong">
+          ✗ SALAH
+        </div>
+      `;
     },
 
+    choices: "NO_KEYS",
+
+    trial_duration: 700,
+
     data: {
-
-        phase: "participant_info"
-
+      phase: "feedback",
+      round: 1
     }
+  };
 
-});
+
+  // ============================================================
+  // 11. FUNGSI MEMBUAT TRIAL RONDE 2
+  // ============================================================
+
+  function createRound2Trial(letter, trialNumber, stimuli) {
+
+    return {
+
+      type: jsPsychHtmlKeyboardResponse,
+
+      stimulus: `
+        <div>
+
+          <div class="letter">
+            ${letter}
+          </div>
+
+          <div class="response-info">
+            <strong>F</strong> = SAMA
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            <strong>J</strong> = TIDAK SAMA
+          </div>
+
+          <p style="font-size:20px;">
+            Tidak ada batas waktu.
+          </p>
+
+        </div>
+      `,
+
+      choices: ["f", "j"],
+
+      response_ends_trial: true,
+
+      data: {
+        phase: "test",
+        round: 2,
+        condition: "no_timer",
+        trial_in_round: trialNumber,
+        stimulus: letter
+      },
+
+      on_finish: function(data) {
+
+        if (trialNumber <= 2) {
+
+          data.correct = null;
+          data.accuracy = null;
+
+          return;
+        }
+
+        const previousLetter =
+          stimuli[trialNumber - 3];
+
+        const isTarget =
+          letter === previousLetter;
+
+        data.target = isTarget;
+
+        let correct = false;
+
+        if (isTarget && data.response === "f") {
+          correct = true;
+        }
+
+        if (!isTarget && data.response === "j") {
+          correct = true;
+        }
+
+        data.correct = correct;
+        data.accuracy = correct ? 1 : 0;
+
+      }
+    };
+  }
 
 
-/* =====================================================
-   INSTRUKSI
-   ===================================================== */
+  // ============================================================
+  // 12. FEEDBACK RONDE 2
+  // ============================================================
 
-timeline.push({
+  const round2Feedback = {
 
     type: jsPsychHtmlKeyboardResponse,
 
-    stimulus: `
+    stimulus: function() {
 
-        <h2>Petunjuk 2-Back</h2>
+      const lastData =
+        jsPsych.data.get().last(1).values()[0];
 
-        <p>
-        Anda akan melihat huruf satu per satu.
-        </p>
+      if (lastData.trial_in_round <= 2) {
 
-        <p>
-        Tugas Anda adalah membandingkan huruf
-        yang sedang muncul dengan huruf
-        <b>2 langkah sebelumnya</b>.
-        </p>
+        return `
+          <div class="feedback">
+            MULAI
+          </div>
 
-        <br>
+          <div class="space-info">
+            Tekan SPASI untuk lanjut
+          </div>
+        `;
+      }
 
-        <p>
-        Jika <b>SAMA</b>:
-        </p>
+      if (lastData.correct) {
 
-        <h2>F</h2>
+        return `
+          <div class="feedback feedback-correct">
+            ✓ BENAR
+          </div>
 
-        <p>
-        Jika <b>TIDAK SAMA</b>:
-        </p>
+          <div class="space-info">
+            Tekan SPASI untuk lanjut
+          </div>
+        `;
+      }
 
-        <h2>J</h2>
+      return `
+        <div class="feedback feedback-wrong">
+          ✗ SALAH
+        </div>
 
-        <br>
+        <div class="space-info">
+          Tekan SPASI untuk lanjut
+        </div>
+      `;
+    },
 
-        <p>
-        Huruf akan berpindah secara otomatis.
-        </p>
+    choices: [" "],
 
-        <p>
-        Jawab secepat dan seakurat mungkin.
-        </p>
-
-        <br>
-
-        <p>
-        Tekan <b>SPASI</b> untuk memulai latihan.
-        </p>
-
-    `,
-
-    choices: [" "]
-
-});
-
-
-/* =====================================================
-   FUNGSI MEMBUAT SEQUENCE 2-BACK
-   ===================================================== */
-
-function createSequence(numberOfTrials) {
-
-    const letters =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-    const sequence = [];
-
-    for (
-        let i = 0;
-        i < numberOfTrials;
-        i++
-    ) {
-
-        /*
-        Dua stimulus pertama
-        tidak dapat menjadi target.
-        */
-
-        if (i < 2) {
-
-            let letter;
-
-            do {
-
-                letter =
-                    letters[
-                        Math.floor(
-                            Math.random() *
-                            letters.length
-                        )
-                    ];
-
-            } while (
-                i > 0 &&
-                letter === sequence[i - 1]
-            );
-
-            sequence.push(letter);
-
-        }
-
-        else {
-
-            /*
-            40% target.
-            */
-
-            const target =
-                Math.random() < 0.40;
-
-            if (target) {
-
-                sequence.push(
-                    sequence[i - 2]
-                );
-
-            }
-
-            else {
-
-                let letter;
-
-                do {
-
-                    letter =
-                        letters[
-                            Math.floor(
-                                Math.random() *
-                                letters.length
-                            )
-                        ];
-
-                } while (
-                    letter === sequence[i - 2]
-                );
-
-                sequence.push(letter);
-
-            }
-
-        }
-
+    data: {
+      phase: "feedback",
+      round: 2
     }
+  };
 
-    return sequence;
 
-}
+  // ============================================================
+  // 13. MEMBUAT TIMELINE RONDE 1
+  // ============================================================
 
+  const round1Timeline = [];
 
-/* =====================================================
-   LATIHAN
-   ===================================================== */
+  for (let i = 0; i < round1Stimuli.length; i++) {
 
-timeline.push({
+    const trialNumber = i + 1;
 
-    type: jsPsychHtmlKeyboardResponse,
-
-    stimulus: `
-
-        <h2>Latihan</h2>
-
-        <p>
-        Ingat:
-        </p>
-
-        <h3>
-        F = sama dengan 2 huruf sebelumnya
-        </h3>
-
-        <h3>
-        J = tidak sama dengan 2 huruf sebelumnya
-        </h3>
-
-        <br>
-
-        <p>
-        Tekan SPASI untuk mulai latihan.
-        </p>
-
-    `,
-
-    choices: [" "]
-
-});
-
-
-const practice =
-    createSequence(10);
-
-
-practice.forEach(
-    function(letter, index) {
-
-        const target =
-            index >= 2 &&
-            letter === practice[index - 2];
-
-        timeline.push({
-
-            type:
-                jsPsychHtmlKeyboardResponse,
-
-            stimulus: `
-
-                <div
-                    style="
-                        font-size:100px;
-                        font-weight:bold;
-                    "
-                >
-                    ${letter}
-                </div>
-
-            `,
-
-            choices: ["f", "j"],
-
-            stimulus_duration: 500,
-
-            trial_duration: 2000,
-
-            data: {
-
-                participant:
-                    () => participantID,
-
-                phase: "practice",
-
-                stimulus: letter,
-
-                target: target
-
-            }
-
-        });
-
-    }
-);
-
-
-/* =====================================================
-   JEDA SEBELUM EKSPERIMEN
-   ===================================================== */
-
-timeline.push({
-
-    type: jsPsychHtmlKeyboardResponse,
-
-    stimulus: `
-
-        <h2>Latihan selesai</h2>
-
-        <p>
-        Sekarang eksperimen utama akan dimulai.
-        </p>
-
-        <p>
-        Anda akan mengerjakan dua kondisi.
-        </p>
-
-        <p>
-        Urutan kondisi dapat berbeda untuk setiap peserta.
-        </p>
-
-        <br>
-
-        <p>
-        Tekan SPASI untuk melanjutkan.
-        </p>
-
-    `,
-
-    choices: [" "]
-
-});
-
-
-/* =====================================================
-   FUNGSI MEMBUAT KONDISI EKSPERIMEN
-   ===================================================== */
-
-function createCondition(
-    conditionName,
-    deadline
-) {
-
-    const sequence =
-        createSequence(22);
-
-    const trials = [];
-
-
-    /* -----------------------------
-       INSTRUKSI KONDISI
-       ----------------------------- */
-
-    if (
-        conditionName ===
-        "tekanan_waktu"
-    ) {
-
-        trials.push({
-
-            type:
-                jsPsychHtmlKeyboardResponse,
-
-            stimulus: `
-
-                <h2>
-                Kondisi Tekanan Waktu
-                </h2>
-
-                <p>
-                Anda harus memberikan respons
-                dalam waktu yang lebih singkat.
-                </p>
-
-                <p>
-                Gunakan:
-                </p>
-
-                <h3>
-                F = SAMA
-                </h3>
-
-                <h3>
-                J = TIDAK SAMA
-                </h3>
-
-                <p>
-                Jawab secepat dan seakurat mungkin.
-                </p>
-
-                <br>
-
-                <p>
-                Tekan SPASI untuk mulai.
-                </p>
-
-            `,
-
-            choices: [" "]
-
-        });
-
-    }
-
-    else {
-
-        trials.push({
-
-            type:
-                jsPsychHtmlKeyboardResponse,
-
-            stimulus: `
-
-                <h2>
-                Kondisi Tanpa Tekanan Waktu
-                </h2>
-
-                <p>
-                Anda memiliki waktu respons
-                yang lebih longgar.
-                </p>
-
-                <p>
-                Gunakan:
-                </p>
-
-                <h3>
-                F = SAMA
-                </h3>
-
-                <h3>
-                J = TIDAK SAMA
-                </h3>
-
-                <p>
-                Jawab secepat dan seakurat mungkin.
-                </p>
-
-                <br>
-
-                <p>
-                Tekan SPASI untuk mulai.
-                </p>
-
-            `,
-
-            choices: [" "]
-
-        });
-
-    }
-
-
-    /* -----------------------------
-       TRIAL
-       ----------------------------- */
-
-    sequence.forEach(
-        function(letter, index) {
-
-            const target =
-                index >= 2 &&
-                letter === sequence[index - 2];
-
-
-            trials.push({
-
-                type:
-                    jsPsychHtmlKeyboardResponse,
-
-                stimulus: `
-
-                    <div
-                        style="
-                            font-size:100px;
-                            font-weight:bold;
-                        "
-                    >
-                        ${letter}
-                    </div>
-
-                `,
-
-                choices: ["f", "j"],
-
-                stimulus_duration: 500,
-
-                trial_duration: deadline,
-
-                data: {
-
-                    participant:
-                        () => participantID,
-
-                    phase: "experiment",
-
-                    condition:
-                        conditionName,
-
-                    stimulus: letter,
-
-                    target: target,
-
-                    deadline:
-                        deadline
-
-                }
-
-            });
-
-        }
+    round1Timeline.push(
+      createRound1Trial(
+        round1Stimuli[i],
+        trialNumber,
+        round1Stimuli
+      )
     );
 
-
-    return trials;
-
-}
+    round1Timeline.push(round1Feedback);
+  }
 
 
-/* =====================================================
-   ACAK URUTAN KONDISI
-   ===================================================== */
+  // ============================================================
+  // 14. MEMBUAT TIMELINE RONDE 2
+  // ============================================================
 
-const conditions =
-    jsPsych.randomization.shuffle([
+  const round2Timeline = [];
 
-        {
-            name:
-                "tanpa_tekanan_waktu",
+  for (let i = 0; i < round2Stimuli.length; i++) {
 
-            deadline:
-                2000
-        },
+    const trialNumber = i + 1;
 
-        {
-            name:
-                "tekanan_waktu",
+    round2Timeline.push(
+      createRound2Trial(
+        round2Stimuli[i],
+        trialNumber,
+        round2Stimuli
+      )
+    );
 
-            deadline:
-                800
-        }
-
-    ]);
+    round2Timeline.push(round2Feedback);
+  }
 
 
-/* =====================================================
-   MASUKKAN KONDISI
-   ===================================================== */
+  // ============================================================
+  // 15. ISTIRAHAT ANTAR RONDE
+  // ============================================================
 
-conditions.forEach(
-    function(condition) {
+  const breakScreen = {
 
-        const trials =
-            createCondition(
-                condition.name,
-                condition.deadline
-            );
-
-        trials.forEach(
-            function(trial) {
-
-                timeline.push(trial);
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   SELESAI
-   ===================================================== */
-
-timeline.push({
-
-    type:
-        jsPsychHtmlKeyboardResponse,
+    type: jsPsychHtmlKeyboardResponse,
 
     stimulus: `
+      <div class="instruction-box">
 
-        <h2>Eksperimen Selesai</h2>
+        <h1>Istirahat</h1>
 
         <p>
-        Terima kasih telah mengikuti eksperimen.
+          Ronde 1 sudah selesai.
         </p>
 
         <p>
-        Tekan tombol di bawah untuk mengunduh data.
+          Silakan beristirahat sebentar.
         </p>
 
-        <br>
+        <p>
+          Setelah siap, lanjutkan ke Ronde 2.
+        </p>
+
+        <p>
+          <strong>Tekan SPASI untuk melanjutkan.</strong>
+        </p>
+
+      </div>
+    `,
+
+    choices: [" "]
+  };
+
+
+  // ============================================================
+  // 16. HALAMAN SELESAI + TOMBOL SAVE
+  // ============================================================
+
+  const finishScreen = {
+
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+      <div class="save-box">
+
+        <h1>Eksperimen Selesai</h1>
+
+        <p>
+          Terima kasih. Semua tugas N-back telah selesai.
+        </p>
+
+        <hr>
+
+        <p>
+          Untuk menyimpan hasil penelitian,
+          <strong>tekan tombol S pada keyboard</strong>
+          atau klik tombol di bawah.
+        </p>
 
         <button
-            id="download"
-            style="
-                font-size:20px;
-                padding:12px 25px;
-            "
+          id="save-button"
+          class="save-button"
         >
-            Download Data
+          S — SIMPAN HASIL
         </button>
 
+        <div
+          id="saved-message"
+          class="saved-message"
+        ></div>
+
+        <p class="small-note">
+          File hasil akan disimpan dalam format CSV
+          dan dapat dibuka menggunakan Microsoft Excel.
+        </p>
+
+      </div>
     `,
 
     choices: "NO_KEYS",
 
     on_load: function() {
 
-        document
-            .getElementById("download")
-            .addEventListener(
-                "click",
-                function() {
+      let saved = false;
 
-                    jsPsych.data
-                        .get()
-                        .localSave(
-                            "csv",
-                            "hasil_nback_" +
-                            participantID +
-                            ".csv"
-                        );
+      function saveData() {
 
-                }
-            );
+        if (saved) {
+          return;
+        }
 
+        saved = true;
+
+        // Ambil hanya data eksperimen,
+        // bukan data instruksi/feedback.
+        const data =
+          jsPsych.data
+            .get()
+            .filter({
+              phase: "test"
+            });
+
+        const filename =
+          "hasil_nback_" +
+          participantID +
+          ".csv";
+
+        // Download CSV
+        data.localSave("csv", filename);
+
+        document.getElementById(
+          "saved-message"
+        ).innerHTML =
+          `
+            ✓ HASIL BERHASIL DISIMPAN
+            <br>
+            <span style="font-size:17px; color:#555;">
+              File: ${filename}
+            </span>
+          `;
+
+        document.getElementById(
+          "save-button"
+        ).disabled = true;
+
+        document.getElementById(
+          "save-button"
+        ).style.opacity = "0.6";
+      }
+
+
+      // Tombol layar
+      document
+        .getElementById("save-button")
+        .addEventListener(
+          "click",
+          saveData
+        );
+
+
+      // Tombol keyboard S
+      function keyHandler(event) {
+
+        if (
+          event.key.toLowerCase() === "s"
+        ) {
+
+          saveData();
+
+        }
+
+      }
+
+      document.addEventListener(
+        "keydown",
+        keyHandler
+      );
     }
+  };
 
-});
+
+  // ============================================================
+  // 17. TIMELINE UTAMA
+  // ============================================================
+
+  const timeline = [
+
+    participantScreen,
+
+    generalInstruction,
+
+    // ========================
+    // RONDE 1
+    // ========================
+
+    round1Instruction,
+
+    ...round1Timeline,
+
+    // ========================
+    // ISTIRAHAT
+    // ========================
+
+    breakScreen,
+
+    // ========================
+    // RONDE 2
+    // ========================
+
+    round2Instruction,
+
+    ...round2Timeline,
+
+    // ========================
+    // SAVE HASIL
+    // ========================
+
+    finishScreen
+  ];
 
 
-/* =====================================================
-   JALANKAN
-   ===================================================== */
+  // ============================================================
+  // 18. MENJALANKAN EKSPERIMEN
+  // ============================================================
 
-jsPsych.run(timeline);
+  jsPsych.run(timeline);
 
 </script>
 
+</body>
 </html>
