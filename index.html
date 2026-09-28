@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
+
     <meta charset="UTF-8">
+
     <title>Eksperimen 2-Back</title>
 
     <script src="https://unpkg.com/jspsych@8.2.1"></script>
-    <link href="https://unpkg.com/jspsych@8.2.1/css/jspsych.css" rel="stylesheet">
+
+    <link
+        href="https://unpkg.com/jspsych@8.2.1/css/jspsych.css"
+        rel="stylesheet"
+    >
 
     <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
-    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@2.1.0"></script>
+
 </head>
 
 <body></body>
@@ -16,290 +22,268 @@
 <script>
 
 /* =====================================================
-   1. INISIALISASI jsPSYCH
+   PENGATURAN DASAR
    ===================================================== */
 
 const jsPsych = initJsPsych({
+
     on_finish: function() {
-        jsPsych.data.get().localSave("csv", "hasil_nback.csv");
+
+        jsPsych.data
+            .get()
+            .localSave(
+                "csv",
+                "hasil_nback.csv"
+            );
+
     }
+
 });
+
 
 const timeline = [];
 
 
 /* =====================================================
-   2. KODE PESERTA
+   VARIABEL PESERTA
+   ===================================================== */
+
+let participantID = "";
+
+
+/* =====================================================
+   INPUT KODE PESERTA
    ===================================================== */
 
 timeline.push({
-    type: jsPsychSurveyHtmlForm,
 
-    preamble: `
+    type: jsPsychHtmlKeyboardResponse,
+
+    stimulus: `
+
         <h2>Eksperimen Working Memory</h2>
-        <p>Silakan masukkan kode peserta Anda.</p>
-        <p>Contoh: P01</p>
-    `,
 
-    html: `
         <p>
-            <input 
-                name="kode_peserta"
-                type="text"
-                required
-                placeholder="P01"
-            >
+        Masukkan kode peserta.
         </p>
+
+        <input
+            id="participant"
+            type="text"
+            placeholder="Contoh: P01"
+            style="
+                font-size:20px;
+                padding:10px;
+            "
+        >
+
+        <br><br>
+
+        <button
+            id="startButton"
+            style="
+                font-size:20px;
+                padding:10px 25px;
+            "
+        >
+            Mulai
+        </button>
+
     `,
 
-    button_label: "Mulai"
+    choices: "NO_KEYS",
+
+    on_load: function() {
+
+        document
+            .getElementById("startButton")
+            .addEventListener("click", function() {
+
+                participantID =
+                    document
+                    .getElementById("participant")
+                    .value;
+
+                if (
+                    participantID.trim() === ""
+                ) {
+
+                    alert(
+                        "Silakan masukkan kode peserta."
+                    );
+
+                    return;
+                }
+
+                jsPsych.finishTrial();
+
+            });
+
+    },
+
+    data: {
+
+        phase: "participant_info"
+
+    }
+
 });
 
 
 /* =====================================================
-   3. INSTRUKSI UMUM
+   INSTRUKSI
    ===================================================== */
 
 timeline.push({
+
     type: jsPsychHtmlKeyboardResponse,
 
     stimulus: `
-        <h2>Petunjuk Eksperimen</h2>
+
+        <h2>Petunjuk 2-Back</h2>
 
         <p>
-        Dalam eksperimen ini, Anda akan melihat huruf
-        satu per satu.
+        Anda akan melihat huruf satu per satu.
         </p>
 
         <p>
-        Tugas Anda adalah mengingat huruf yang muncul
+        Tugas Anda adalah membandingkan huruf
+        yang sedang muncul dengan huruf
         <b>2 langkah sebelumnya</b>.
         </p>
 
-        <p>
-        Jika huruf yang sedang muncul sama dengan huruf
-        2 langkah sebelumnya, tekan:
-        </p>
-
-        <h2>SPASI</h2>
+        <br>
 
         <p>
-        Jika tidak sama, jangan tekan apa pun.
+        Jika <b>SAMA</b>:
+        </p>
+
+        <h2>F</h2>
+
+        <p>
+        Jika <b>TIDAK SAMA</b>:
+        </p>
+
+        <h2>J</h2>
+
+        <br>
+
+        <p>
+        Huruf akan berpindah secara otomatis.
         </p>
 
         <p>
-        Kerjakan secepat dan seakurat mungkin.
+        Jawab secepat dan seakurat mungkin.
         </p>
 
+        <br>
+
         <p>
-        Tekan <b>SPASI</b> untuk melanjutkan.
+        Tekan <b>SPASI</b> untuk memulai latihan.
         </p>
+
     `,
 
     choices: [" "]
+
 });
 
 
 /* =====================================================
-   4. FUNGSI MEMBUAT SEQUENCE 2-BACK
+   FUNGSI MEMBUAT SEQUENCE 2-BACK
    ===================================================== */
 
-function createNBackSequence(numberOfTrials) {
+function createSequence(numberOfTrials) {
 
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const letters =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-    let sequence = [];
+    const sequence = [];
 
-    for (let i = 0; i < numberOfTrials; i++) {
+    for (
+        let i = 0;
+        i < numberOfTrials;
+        i++
+    ) {
 
-        /* Dua trial pertama tidak bisa menjadi target */
+        /*
+        Dua stimulus pertama
+        tidak dapat menjadi target.
+        */
 
         if (i < 2) {
 
-            const randomLetter =
-                letters[Math.floor(Math.random() * letters.length)];
+            let letter;
 
-            sequence.push(randomLetter);
+            do {
 
-        } else {
+                letter =
+                    letters[
+                        Math.floor(
+                            Math.random() *
+                            letters.length
+                        )
+                    ];
+
+            } while (
+                i > 0 &&
+                letter === sequence[i - 1]
+            );
+
+            sequence.push(letter);
+
+        }
+
+        else {
 
             /*
-            Sekitar 30% trial dibuat sebagai target.
-            Target = sama dengan huruf 2 langkah sebelumnya.
+            40% target.
             */
 
-            const isTarget = Math.random() < 0.30;
+            const target =
+                Math.random() < 0.40;
 
-            if (isTarget) {
+            if (target) {
 
-                sequence.push(sequence[i - 2]);
+                sequence.push(
+                    sequence[i - 2]
+                );
 
-            } else {
+            }
 
-                /*
-                Jika bukan target, pilih huruf
-                yang berbeda dari 2-back.
-                */
+            else {
 
-                let randomLetter;
+                let letter;
 
                 do {
 
-                    randomLetter =
-                        letters[Math.floor(Math.random() * letters.length)];
+                    letter =
+                        letters[
+                            Math.floor(
+                                Math.random() *
+                                letters.length
+                            )
+                        ];
 
-                } while (randomLetter === sequence[i - 2]);
+                } while (
+                    letter === sequence[i - 2]
+                );
 
-                sequence.push(randomLetter);
+                sequence.push(letter);
+
             }
+
         }
+
     }
 
     return sequence;
+
 }
 
 
 /* =====================================================
-   5. FUNGSI MEMBUAT KONDISI N-BACK
-   ===================================================== */
-
-function createNBackCondition(conditionName, timedCondition) {
-
-    const sequence = createNBackSequence(60);
-
-    const conditionTimeline = [];
-
-    /* ---------- INSTRUKSI KONDISI ---------- */
-
-    if (timedCondition) {
-
-        conditionTimeline.push({
-
-            type: jsPsychHtmlKeyboardResponse,
-
-            stimulus: `
-                <h2>Kondisi Tekanan Waktu</h2>
-
-                <p>
-                Sekarang Anda akan mengerjakan tugas 2-back
-                dengan batas waktu.
-                </p>
-
-                <p>
-                Tekan <b>SPASI</b> jika huruf sama dengan
-                huruf 2 langkah sebelumnya.
-                </p>
-
-                <p>
-                Anda harus merespons dalam waktu yang tersedia.
-                </p>
-
-                <p>
-                Kerjakan secepat dan seakurat mungkin.
-                </p>
-
-                <p>
-                Tekan <b>SPASI</b> untuk mulai.
-                </p>
-            `,
-
-            choices: [" "]
-        });
-
-    } else {
-
-        conditionTimeline.push({
-
-            type: jsPsychHtmlKeyboardResponse,
-
-            stimulus: `
-                <h2>Kondisi Tanpa Tekanan Waktu</h2>
-
-                <p>
-                Sekarang Anda akan mengerjakan tugas 2-back.
-                </p>
-
-                <p>
-                Tidak ada countdown yang ditampilkan.
-                </p>
-
-                <p>
-                Tekan <b>SPASI</b> jika huruf sama dengan
-                huruf 2 langkah sebelumnya.
-                </p>
-
-                <p>
-                Kerjakan seakurat mungkin.
-                </p>
-
-                <p>
-                Tekan <b>SPASI</b> untuk mulai.
-                </p>
-            `,
-
-            choices: [" "]
-        });
-    }
-
-
-    /* ---------- TRIAL N-BACK ---------- */
-
-    sequence.forEach((letter, index) => {
-
-        const isTarget =
-            index >= 2 &&
-            letter === sequence[index - 2];
-
-        conditionTimeline.push({
-
-            type: jsPsychHtmlKeyboardResponse,
-
-            stimulus: `
-                <div style="font-size:80px;">
-                    ${letter}
-                </div>
-            `,
-
-            choices: [" "],
-
-            /*
-            Huruf ditampilkan selama 500 ms.
-            */
-
-            stimulus_duration: 500,
-
-            /*
-            Kondisi timer:
-            peserta memiliki 2000 ms untuk merespons.
-
-            Kondisi tanpa timer:
-            peserta memiliki 5000 ms.
-            */
-
-            trial_duration: timedCondition ? 2000 : 5000,
-
-            data: {
-
-                condition: conditionName,
-
-                timed: timedCondition,
-
-                trial_number: index + 1,
-
-                stimulus: letter,
-
-                target: isTarget
-            }
-        });
-
-    });
-
-    return conditionTimeline;
-}
-
-
-/* =====================================================
-   6. LATIHAN
+   LATIHAN
    ===================================================== */
 
 timeline.push({
@@ -307,68 +291,90 @@ timeline.push({
     type: jsPsychHtmlKeyboardResponse,
 
     stimulus: `
-        <h2>Latihan</h2>
 
-        <p>
-        Sebelum eksperimen dimulai, Anda akan melakukan
-        beberapa percobaan latihan.
-        </p>
+        <h2>Latihan</h2>
 
         <p>
         Ingat:
         </p>
 
         <h3>
-        SPASI jika huruf sama dengan 2 langkah sebelumnya.
+        F = sama dengan 2 huruf sebelumnya
         </h3>
 
+        <h3>
+        J = tidak sama dengan 2 huruf sebelumnya
+        </h3>
+
+        <br>
+
         <p>
-        Tekan <b>SPASI</b> untuk memulai latihan.
+        Tekan SPASI untuk mulai latihan.
         </p>
+
     `,
 
     choices: [" "]
+
 });
 
 
-const practiceSequence = createNBackSequence(10);
+const practice =
+    createSequence(10);
 
-practiceSequence.forEach((letter, index) => {
 
-    const isTarget =
-        index >= 2 &&
-        letter === practiceSequence[index - 2];
+practice.forEach(
+    function(letter, index) {
 
-    timeline.push({
+        const target =
+            index >= 2 &&
+            letter === practice[index - 2];
 
-        type: jsPsychHtmlKeyboardResponse,
+        timeline.push({
 
-        stimulus: `
-            <div style="font-size:80px;">
-                ${letter}
-            </div>
-        `,
+            type:
+                jsPsychHtmlKeyboardResponse,
 
-        choices: [" "],
+            stimulus: `
 
-        stimulus_duration: 500,
+                <div
+                    style="
+                        font-size:100px;
+                        font-weight:bold;
+                    "
+                >
+                    ${letter}
+                </div>
 
-        trial_duration: 3000,
+            `,
 
-        data: {
+            choices: ["f", "j"],
 
-            phase: "practice",
+            stimulus_duration: 500,
 
-            stimulus: letter,
+            trial_duration: 2000,
 
-            target: isTarget
-        }
-    });
-});
+            data: {
+
+                participant:
+                    () => participantID,
+
+                phase: "practice",
+
+                stimulus: letter,
+
+                target: target
+
+            }
+
+        });
+
+    }
+);
 
 
 /* =====================================================
-   7. JEDA SEBELUM EKSPERIMEN
+   JEDA SEBELUM EKSPERIMEN
    ===================================================== */
 
 timeline.push({
@@ -376,10 +382,11 @@ timeline.push({
     type: jsPsychHtmlKeyboardResponse,
 
     stimulus: `
+
         <h2>Latihan selesai</h2>
 
         <p>
-        Selanjutnya eksperimen utama akan dimulai.
+        Sekarang eksperimen utama akan dimulai.
         </p>
 
         <p>
@@ -387,84 +394,322 @@ timeline.push({
         </p>
 
         <p>
-        Tekan <b>SPASI</b> untuk melanjutkan.
+        Urutan kondisi dapat berbeda untuk setiap peserta.
         </p>
+
+        <br>
+
+        <p>
+        Tekan SPASI untuk melanjutkan.
+        </p>
+
     `,
 
     choices: [" "]
+
 });
 
 
 /* =====================================================
-   8. ACAK URUTAN KONDISI
+   FUNGSI MEMBUAT KONDISI EKSPERIMEN
    ===================================================== */
 
-const conditions = jsPsych.randomization.shuffle([
+function createCondition(
+    conditionName,
+    deadline
+) {
 
-    {
-        name: "tanpa_tekanan_waktu",
-        timed: false
-    },
+    const sequence =
+        createSequence(22);
 
-    {
-        name: "tekanan_waktu",
-        timed: true
+    const trials = [];
+
+
+    /* -----------------------------
+       INSTRUKSI KONDISI
+       ----------------------------- */
+
+    if (
+        conditionName ===
+        "tekanan_waktu"
+    ) {
+
+        trials.push({
+
+            type:
+                jsPsychHtmlKeyboardResponse,
+
+            stimulus: `
+
+                <h2>
+                Kondisi Tekanan Waktu
+                </h2>
+
+                <p>
+                Anda harus memberikan respons
+                dalam waktu yang lebih singkat.
+                </p>
+
+                <p>
+                Gunakan:
+                </p>
+
+                <h3>
+                F = SAMA
+                </h3>
+
+                <h3>
+                J = TIDAK SAMA
+                </h3>
+
+                <p>
+                Jawab secepat dan seakurat mungkin.
+                </p>
+
+                <br>
+
+                <p>
+                Tekan SPASI untuk mulai.
+                </p>
+
+            `,
+
+            choices: [" "]
+
+        });
+
     }
 
-]);
+    else {
+
+        trials.push({
+
+            type:
+                jsPsychHtmlKeyboardResponse,
+
+            stimulus: `
+
+                <h2>
+                Kondisi Tanpa Tekanan Waktu
+                </h2>
+
+                <p>
+                Anda memiliki waktu respons
+                yang lebih longgar.
+                </p>
+
+                <p>
+                Gunakan:
+                </p>
+
+                <h3>
+                F = SAMA
+                </h3>
+
+                <h3>
+                J = TIDAK SAMA
+                </h3>
+
+                <p>
+                Jawab secepat dan seakurat mungkin.
+                </p>
+
+                <br>
+
+                <p>
+                Tekan SPASI untuk mulai.
+                </p>
+
+            `,
+
+            choices: [" "]
+
+        });
+
+    }
+
+
+    /* -----------------------------
+       TRIAL
+       ----------------------------- */
+
+    sequence.forEach(
+        function(letter, index) {
+
+            const target =
+                index >= 2 &&
+                letter === sequence[index - 2];
+
+
+            trials.push({
+
+                type:
+                    jsPsychHtmlKeyboardResponse,
+
+                stimulus: `
+
+                    <div
+                        style="
+                            font-size:100px;
+                            font-weight:bold;
+                        "
+                    >
+                        ${letter}
+                    </div>
+
+                `,
+
+                choices: ["f", "j"],
+
+                stimulus_duration: 500,
+
+                trial_duration: deadline,
+
+                data: {
+
+                    participant:
+                        () => participantID,
+
+                    phase: "experiment",
+
+                    condition:
+                        conditionName,
+
+                    stimulus: letter,
+
+                    target: target,
+
+                    deadline:
+                        deadline
+
+                }
+
+            });
+
+        }
+    );
+
+
+    return trials;
+
+}
 
 
 /* =====================================================
-   9. MASUKKAN DUA KONDISI
+   ACAK URUTAN KONDISI
    ===================================================== */
 
-conditions.forEach(condition => {
+const conditions =
+    jsPsych.randomization.shuffle([
 
-    const conditionTrials =
-        createNBackCondition(
-            condition.name,
-            condition.timed
-        );
+        {
+            name:
+                "tanpa_tekanan_waktu",
 
-    conditionTrials.forEach(trial => {
+            deadline:
+                2000
+        },
 
-        timeline.push(trial);
+        {
+            name:
+                "tekanan_waktu",
 
-    });
+            deadline:
+                800
+        }
 
-});
+    ]);
 
 
 /* =====================================================
-   10. PESAN SELESAI
+   MASUKKAN KONDISI
+   ===================================================== */
+
+conditions.forEach(
+    function(condition) {
+
+        const trials =
+            createCondition(
+                condition.name,
+                condition.deadline
+            );
+
+        trials.forEach(
+            function(trial) {
+
+                timeline.push(trial);
+
+            }
+        );
+
+    }
+);
+
+
+/* =====================================================
+   SELESAI
    ===================================================== */
 
 timeline.push({
 
-    type: jsPsychHtmlKeyboardResponse,
+    type:
+        jsPsychHtmlKeyboardResponse,
 
     stimulus: `
-        <h2>Eksperimen selesai</h2>
+
+        <h2>Eksperimen Selesai</h2>
 
         <p>
         Terima kasih telah mengikuti eksperimen.
         </p>
 
         <p>
-        Data Anda telah disimpan.
+        Tekan tombol di bawah untuk mengunduh data.
         </p>
 
-        <p>
-        Anda dapat menutup halaman ini.
-        </p>
+        <br>
+
+        <button
+            id="download"
+            style="
+                font-size:20px;
+                padding:12px 25px;
+            "
+        >
+            Download Data
+        </button>
+
     `,
 
-    choices: "NO_KEYS"
+    choices: "NO_KEYS",
+
+    on_load: function() {
+
+        document
+            .getElementById("download")
+            .addEventListener(
+                "click",
+                function() {
+
+                    jsPsych.data
+                        .get()
+                        .localSave(
+                            "csv",
+                            "hasil_nback_" +
+                            participantID +
+                            ".csv"
+                        );
+
+                }
+            );
+
+    }
+
 });
 
 
 /* =====================================================
-   11. JALANKAN EKSPERIMEN
+   JALANKAN
    ===================================================== */
 
 jsPsych.run(timeline);
